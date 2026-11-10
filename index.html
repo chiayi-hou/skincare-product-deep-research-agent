@@ -5,508 +5,487 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Skincare Deep Research</title>
         <style>
-            * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-            }
-            :root {
-                --tabbar-h: 3rem;
-            }
-            body {
-                font-family: system-ui, sans-serif;
-                color: #111;
-            }
-            h2 {
-                font-size: 0.75rem;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-                color: #999;
-                font-weight: 400;
-                margin-bottom: 0.75rem;
-                display: flex;
-                justify-content: space-between;
-                align-items: baseline;
-            }
-            button {
-                padding: 0.75rem 1.5rem;
-                background: #000;
-                color: #fff;
-                border: none;
-                font-size: 0.75rem;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-                cursor: pointer;
-            }
-            button:disabled {
-                opacity: 0.3;
-            }
-            .empty {
-                color: #999;
-            }
+/* Skincare Deep Research — unified blue/white theme */
+:root {
+    --tabbar-h: 8.6rem;
+    --content-w: 85%; /* shared width of header arch, panels and activity view */
+    --page-pad: calc((100% - var(--content-w)) / 2);
+    --arch-extend: min(calc(var(--content-w) * .04), var(--page-pad)); /* arch overhang per side */
+    --panel-bg: rgba(255, 255, 255, 0.30); /* translucent white inside the three gold-bordered panels */
+    --gold: #b79b56;
+    --gold-soft: #d4c18b;
+    --ink: #353b46;
+    --muted: #6a7484;
+    --blue: #506b93;
+    --blue-dark: #405b80;
+    --line: rgba(183, 155, 86, .42);
+}
 
-            /* --- Layout: tab bar on top, one view below --- */
-            #app {
-                display: flex;
-                flex-direction: column;
-                height: 100vh;
-                height: 100dvh;
-            }
-            #tabs {
-                flex: none;
-                height: var(--tabbar-h);
-                display: flex;
-                padding: 0 1.5rem;
-                border-bottom: 1px solid #e0e0e0;
-            }
-            .tab {
-                padding: 0 1rem;
-                background: none;
-                color: #999;
-                border-bottom: 2px solid transparent;
-            }
-            .tab:hover,
-            .tab[aria-selected="true"] {
-                color: #000;
-            }
-            .tab[aria-selected="true"] {
-                border-bottom-color: #000;
-            }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+    font-family: system-ui, sans-serif;
+    color: var(--ink);
+    background:
+        radial-gradient(ellipse 24% 26% at 0% 100%, rgba(112, 148, 232, .32), transparent 100%),
+        radial-gradient(ellipse 23% 24% at 100% 100%, rgba(189, 234, 211, .38), transparent 100%),
+        radial-gradient(ellipse 11% 13% at 87% 100%, rgba(255, 242, 198, .30), transparent 100%),
+        radial-gradient(ellipse 42% 34% at 50% 0%, rgba(233, 215, 233, .62), rgba(226, 218, 236, .34) 55%, transparent 100%),
+        radial-gradient(ellipse 36% 40% at 14% 0%, rgba(203, 218, 237, .55), transparent 100%),
+        radial-gradient(ellipse 36% 40% at 86% 0%, rgba(203, 218, 237, .55), transparent 100%),
+        linear-gradient(180deg, #e1effe 0%, #edf5ff 22%, #f8fcff 50%, #fff 75%, #f1f8ff 100%);
+    background-attachment: fixed;
+}
 
-            /* Chat view: Activity sidebar (20%) and conversation (80%) */
-            #view-chat {
-                flex: 1;
-                min-height: 0;
-                display: grid;
-                grid-template-columns: 20% 80%;
-            }
-            #sidebar {
-                min-width: 0;
-                overflow-y: auto;
-                padding: 1.25rem;
-                border-right: 1px solid #e0e0e0;
-            }
-            #activity {
-                list-style: none;
-                font-size: 0.85rem;
-                line-height: 1.7;
-            }
-            #activity .agent {
-                font-weight: 600;
-            }
-            #activity .error {
-                color: #dc2626;
-            }
-            #status {
-                color: #999;
-                text-transform: none;
-                letter-spacing: 0;
-            }
-            #conversation {
-                min-width: 0;
-                min-height: 0;
-                display: flex;
-                flex-direction: column;
-            }
-            #messages {
-                flex: 1;
-                overflow-y: auto;
-                padding: 1.5rem;
-                display: flex;
-                flex-direction: column;
-                gap: 1rem;
-            }
-            .msg {
-                max-width: 48rem;
-                font-size: 0.8rem;
-                line-height: 1.5;
-                white-space: pre-wrap;
-                word-break: break-word;
-            }
-            .msg.user {
-                align-self: flex-end;
-                padding: 0.6rem 0.9rem;
-                background: #f3f3f3;
-                font-family: system-ui, sans-serif;
-                font-size: 0.9rem;
-            }
-            .msg.assistant {
-                align-self: flex-start;
-                font-family: ui-monospace, monospace;
-            }
-            .msg.error {
-                color: #dc2626;
-            }
-            .msg.md {
-                font-family: system-ui, sans-serif;
-                font-size: 0.95rem;
-                line-height: 1.65;
-                white-space: normal;
-            }
-            .md > :first-child {
-                margin-top: 0;
-            }
-            .md > :last-child {
-                margin-bottom: 0;
-            }
-            .md h1,
-            .md h2,
-            .md h3,
-            .md h4 {
-                margin: 1.4em 0 0.5em;
-                line-height: 1.3;
-            }
-            .md h1 {
-                font-size: 1.35rem;
-            }
-            .md h2 {
-                display: block;
-                font-size: 1.15rem;
-                text-transform: none;
-                letter-spacing: 0;
-                color: inherit;
-                font-weight: 600;
-            }
-            .md h3 {
-                font-size: 1rem;
-            }
-            .md p,
-            .md ul,
-            .md ol,
-            .md blockquote,
-            .md pre,
-            .md table {
-                margin: 0.75em 0;
-            }
-            .md ul,
-            .md ol {
-                padding-left: 1.5rem;
-            }
-            .md li + li {
-                margin-top: 0.25em;
-            }
-            .md a {
-                color: #2563eb;
-                word-break: break-all;
-            }
-            .md code {
-                padding: 0.1em 0.35em;
-                background: #f3f3f3;
-                font-family: ui-monospace, monospace;
-                font-size: 0.85em;
-            }
-            .md pre {
-                padding: 0.75rem 1rem;
-                background: #f3f3f3;
-                overflow-x: auto;
-            }
-            .md pre code {
-                padding: 0;
-                background: none;
-            }
-            .md blockquote {
-                padding-left: 1rem;
-                border-left: 3px solid #e0e0e0;
-                color: #555;
-            }
-            .md table {
-                display: block;
-                max-width: 100%;
-                overflow-x: auto;
-                border-collapse: collapse;
-                font-size: 0.85rem;
-            }
-            .md th,
-            .md td {
-                padding: 0.4rem 0.75rem;
-                border: 1px solid #e0e0e0;
-                text-align: left;
-                vertical-align: top;
-            }
-            .md th {
-                background: #fafafa;
-            }
-            .md hr {
-                margin: 1.25em 0;
-                border: none;
-                border-top: 1px solid #e0e0e0;
-            }
-            .msg.thinking {
-                color: #999;
-                font-family: system-ui, sans-serif;
-                font-size: 0.9rem;
-            }
-            .dots span {
-                animation: dot-pulse 1.2s infinite both;
-            }
-            .dots span:nth-child(2) {
-                animation-delay: 0.2s;
-            }
-            .dots span:nth-child(3) {
-                animation-delay: 0.4s;
-            }
-            @keyframes dot-pulse {
-                0%,
-                80%,
-                100% {
-                    opacity: 0.15;
-                }
-                40% {
-                    opacity: 1;
-                }
-            }
-            #task {
-                flex: none;
-                padding: 1rem 1.5rem 1.25rem;
-                border-top: 1px solid #e0e0e0;
-            }
-            #question {
-                width: 100%;
-                padding: 0.6rem 0;
-                border: none;
-                border-bottom: 1px solid #e0e0e0;
-                font-size: 1rem;
-                outline: none;
-            }
-            #question:focus {
-                border-bottom-color: #000;
-            }
-            #examples {
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 0.25rem;
-                margin-top: 0.75rem;
-            }
-            .example {
-                padding: 0;
-                background: none;
-                color: #666;
-                font-size: 0.8rem;
-                text-transform: none;
-                letter-spacing: 0;
-                text-align: left;
-            }
-            .example:hover {
-                color: #000;
-                text-decoration: underline;
-            }
-            #run,
-            #new-session {
-                margin-top: 1rem;
-            }
-            #new-session {
-                background: none;
-                color: #666;
-                border: 1px solid #e0e0e0;
-                margin-left: 0.5rem;
-            }
+button {
+    padding: .75rem 1.5rem;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: .75rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    background: var(--blue);
+    color: #fff;
+}
+button:disabled { opacity: .4; cursor: not-allowed; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.empty { color: var(--muted); }
 
-            /* Activity Panel view: the existing context timeline, filling the area under the tab bar.
-               It stays in place (hidden, not removed) on the Chat tab so its scroll position survives. */
-            body[data-tab] {
-                margin-right: 0;
-            }
-            body[data-tab] #context-panel {
-                top: var(--tabbar-h);
-                left: 0;
-                right: 0;
-                bottom: 0;
-                width: auto;
-                position: fixed;
-                border-left: none;
-                z-index: 5;
-            }
-            body[data-tab] #context-panel.timeline {
-                height: auto;
-            }
-            body[data-tab="chat"] #context-panel {
-                visibility: hidden;
-                pointer-events: none;
-            }
-            #context-panel:empty::before {
-                content: "Detailed agent activity appears here once research starts.";
-                font-family: system-ui, sans-serif;
-                font-size: 0.85rem;
-                color: #999;
-            }
+/* Page shell and tabs */
+#app { overflow-x: clip; display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0; }
+#tabs {
+    flex: none;
+    position: relative;
+    height: var(--tabbar-h);
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: .6rem;
+    padding: 0 var(--page-pad) .9rem;
+}
+/* Decorative arch: soft white fade + thin curved lines (SVG, see #arch in markup) */
+#arch {
+    position: absolute;
+    z-index: 0;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--page-pad) - var(--arch-extend));
+    width: calc(var(--content-w) + 2 * var(--arch-extend));
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+}
+#arch .arch-line {
+    fill: none;
+    stroke: #fff;
+    vector-effect: non-scaling-stroke;
+    filter: drop-shadow(0 0 3px rgba(80,107,147,.28));
+}
+#arch-stars {
+    position: absolute;
+    z-index: 1;
+    top: 3.3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    color: #2b2f36;
+    pointer-events: none;
+}
+#arch-stars svg { fill: currentColor; display: block; }
+#tabs .tab { position: relative; z-index: 2; }
+.tab {
+    min-width: 8.5rem;
+    padding: .5rem 1.6rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: #fbfcfd;
+    border-color: #dfe3e8;
+    color: #4a4f58;
+    font-size: .85rem;
+    font-weight: 650;
+    text-transform: none;
+    letter-spacing: .02em;
+    box-shadow: 0 2px 8px rgba(58,78,117,.08);
+    transition: background .2s ease, color .2s ease, box-shadow .2s ease;
+}
+.tab:hover { background: #fff; box-shadow: 0 3px 12px rgba(58,78,117,.14); }
+.tab[aria-selected="true"] {
+    border-color: transparent;
+    background: #6b8cb8;
+    color: #fff;
+    box-shadow: 0 3px 12px rgba(58,78,117,.18);
+}
+.tab[aria-selected="true"]:hover { background: #607ea9; }
 
-            @media (max-width: 800px) {
-                #view-chat {
-                    grid-template-columns: 1fr;
-                    grid-template-rows: auto 1fr;
-                }
-                #sidebar {
-                    max-height: 30vh;
-                    border-right: none;
-                    border-bottom: 1px solid #e0e0e0;
-                }
-            }
-        
-            /* --- Soft pastel theme: visual changes only --- */
-            :root {
-                --tabbar-h: 3.6rem;
-                --gold: #b79b56;
-                --gold-soft: #d4c18b;
-                --ink: #403d53;
-                --muted: #78738a;
-                --panel: rgba(255, 255, 255, 0.79);
-                --panel-blue: rgba(232, 242, 255, 0.68);
-                --panel-purple: rgba(242, 236, 255, 0.64);
-            }
-            html, body { height: 100%; }
-            body {
-                color: var(--ink);
-                background: linear-gradient(135deg, #e5f2ff 0%, #f8fbff 36%, #eee8ff 70%, #ffffff 100%);
-            }
-            #app { min-height: 0; }
-            #tabs {
-                height: var(--tabbar-h);
-                flex: none;
-                gap: .6rem;
-                padding: .35rem 1.25rem .15rem;
-                background: transparent;
-                border-bottom: none;
-            }
-            .tab {
-                padding: .6rem 1.25rem;
-                color: #655c7d;
-                background: rgba(255,255,255,.46);
-                border: 2.5px solid var(--gold-soft);
-                border-radius: 16px 16px 10px 10px;
-                font-size: .85rem;
-                font-weight: 650;
-                letter-spacing: .02em;
-                text-transform: none;
-                transition: background .2s ease, box-shadow .2s ease;
-            }
-            .tab:hover { background: rgba(255,255,255,.82); color: var(--ink); }
-            .tab[aria-selected="true"] {
-                color: #53436f;
-                border-color: var(--gold);
-                background: linear-gradient(120deg, #e8f3ff, #f1eaff 78%, #fff);
-                box-shadow: 0 3px 12px rgba(127,104,75,.1);
-            }
-            #view-chat {
-                grid-template-columns: minmax(185px, 20%) minmax(0, 1fr);
-                gap: 1rem;
-                padding: 1rem 1.25rem 1.25rem;
-                min-height: 0;
-            }
-            #sidebar, #conversation {
-                border: 3px solid var(--gold);
-                border-radius: 25px;
-                box-shadow: 0 9px 28px rgba(110,96,145,.075), inset 0 0 0 1px rgba(255,255,255,.7);
-                background: var(--panel);
-                overflow: hidden;
-            }
-            #sidebar {
-                overflow-y: auto;
-                padding: 1.4rem 1rem;
-                background: linear-gradient(155deg, rgba(255,255,255,.88), var(--panel-purple));
-                border-right: 3px solid var(--gold);
-            }
-            #sidebar h2 { color: #756395; font-weight: 700; font-size: .8rem; }
-            #status, .empty { color: var(--muted); }
-            #activity { line-height: 1.65; }
-            #activity li {
-                padding: .55rem .25rem;
-                border-bottom: 1px solid rgba(183,155,86,.2);
-            }
-            #activity .agent { color: #75618a; }
-            #conversation {
-                position: relative;
-                background: linear-gradient(150deg, rgba(255,255,255,.85), var(--panel-blue) 60%, rgba(244,239,255,.82));
-            }
-            /* Outlined four-point stars (purely decorative; not interactive). */
-            .chat-sparkle {
-                position: absolute;
-                z-index: 0;
-                pointer-events: none;
-                width: 72px;
-                height: 72px;
-                opacity: .72;
-            }
-            .chat-sparkle.top-left { top: 10px; left: 13px; }
-            .chat-sparkle.bottom-right { right: 14px; bottom: 120px; transform: rotate(15deg); }
-            #messages, #task { position: relative; z-index: 1; }
-            #messages { padding: 3.4rem 1.7rem 1.4rem; gap: 1.15rem; }
-            #intro { max-width: 55rem; color: #77718a; }
-            .msg { font-size: .91rem; line-height: 1.65; }
-            .msg.user {
-                padding: .85rem 1.2rem;
-                background: linear-gradient(115deg, #edf5ff, #f1eaff);
-                border: 1px solid #d8c9ec;
-                border-radius: 18px 18px 6px 18px;
-                box-shadow: 0 2px 8px rgba(105,91,149,.06);
-            }
-            .msg.assistant:not(.thinking) { max-width: 56rem; }
-            .msg.md { color: var(--ink); font-size: .96rem; }
-            .md a { color: #63549d; }
-            .md blockquote { border-left-color: var(--gold); }
-            .md th, .md td { border-color: #d7ccaa; }
-            .md th, .md pre, .md code { background: rgba(237,235,255,.6); }
-            .md hr { border-top-color: #d8ca9f; }
-            #task {
-                padding: 1rem 1.5rem 1.3rem;
-                border-top: 2px solid rgba(183,155,86,.58);
-                background: rgba(255,255,255,.54);
-            }
-            #question {
-                padding: .78rem 1rem;
-                border: 1.5px solid #d5c69e;
-                border-radius: 14px;
-                background: rgba(255,255,255,.87);
-                color: var(--ink);
-            }
-            #question:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(183,155,86,.13); }
-            button { border-radius: 12px; }
-            #run {
-                background: #8473ac;
-                color: white;
-                border: 2px solid #a89abe;
-            }
-            #run:hover:not(:disabled) { background: #6f5e99; }
-            #new-session {
-                border: 2px solid var(--gold-soft);
-                background: rgba(255,255,255,.7);
-                color: #675676;
-            }
-            .example { color: #756b8c; }
-            .example:hover { color: #65509c; }
-            /* Preserve the original activity panel element and its JS behavior. */
-            body[data-tab] #context-panel {
-                top: calc(var(--tabbar-h) + .9rem);
-                left: 1.25rem;
-                right: 1.25rem;
-                bottom: 1.25rem;
-                width: auto;
-                border: 3px solid var(--gold) !important;
-                border-radius: 25px !important;
-                background: linear-gradient(140deg, rgba(255,255,255,.96), #ecf3ff 62%, #f1ebff) !important;
-                box-shadow: 0 9px 28px rgba(110,96,145,.1);
-                overflow: auto;
-            }
-            body[data-tab="chat"] #context-panel { visibility: hidden; pointer-events: none; }
-            @media (max-width: 800px) {
-                #view-chat { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: .7rem; padding: .6rem; }
-                #sidebar { max-height: 23vh; border: 3px solid var(--gold); border-radius: 20px; }
-                #conversation { border-radius: 20px; }
-                #tabs { padding: .3rem .6rem; }
-                .tab { padding: .5rem .8rem; }
-                #messages { padding: 3rem 1rem 1rem; }
-                #task { padding: .75rem; }
-                body[data-tab] #context-panel { left: .6rem; right: .6rem; bottom: .6rem; }
-            }
-            @media (prefers-reduced-motion: reduce) {
-                .tab, .dots span { transition: none; animation: none; }
-            }
+/* Transparent main panels: same underlying page gradient */
+#view-chat {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(185px, 20%) minmax(0, 1fr);
+    gap: 1rem;
+    padding: .4rem var(--page-pad) .9rem;
+}
+#sidebar {
+    min-width: 0;
+    min-height: 0;
+    border: 1.5px solid var(--gold);
+    border-radius: 14px;
+    background: var(--panel-bg);
+    box-shadow: 0 9px 28px rgba(65,91,128,.07);
+}
+
+#sidebar { overflow-y: auto; padding: 1.4rem 1rem; }
+#sidebar h2 {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: .75rem;
+    color: #586e8d;
+    font-size: .8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+#status { color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
+#activity { list-style: none; font-size: .85rem; line-height: 1.65; }
+#activity li { padding: .55rem .25rem; border-bottom: 1px solid rgba(183,155,86,.2); overflow-wrap: anywhere; }
+#activity .agent { font-weight: 650; color: #526987; }
+#activity .error { color: #b02b37; }
+
+/* Conversation, decorative corner stars, and message list */
+#conversation { position: relative; display: flex; flex-direction: column; overflow: hidden}
+.chat-sparkle {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+    width: 36px;
+    height: 36px;
+    opacity: .9;
+}
+.chat-sparkle.top-left {
+    top: -14px;
+    left: 35px;
+}
+
+.chat-sparkle.bottom-right {
+    right: 35px;
+    bottom: -14px;
+}
+#messages, #task { position: relative; z-index: 1; }
+#messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 3.4rem 1.7rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+}
+#intro { max-width: 55rem; }
+.msg { max-width: 48rem; font-size: .91rem; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.user {
+    align-self: flex-end;
+    max-width: 75%;
+    padding: .85rem 1.2rem;
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    border-radius: 18px 18px 6px 18px;
+    box-shadow: 0 3px 12px rgba(52,78,117,.14);
+    font-size: .9rem;
+}
+.msg.assistant:not(.thinking) {
+    align-self: flex-start;
+    max-width: min(56rem, 85%);
+    padding: 1.2rem 1.5rem;
+    background: #fff;
+    color: var(--ink);
+    border: 1px solid rgba(183,155,86,.22);
+    border-radius: 18px 18px 18px 6px;
+    box-shadow: 0 4px 16px rgba(76,97,137,.08);
+}
+.msg.error { color: #b02b37 !important; }
+.msg.thinking {
+    align-self: flex-start;
+    background: transparent;
+    color: #657b9a;
+    font-size: .9rem;
+    border: none;
+    box-shadow: none;
+}
+.dots span { animation: dot-pulse 1.2s infinite both; }
+.dots span:nth-child(2) { animation-delay: .2s; }
+.dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes dot-pulse {
+    0%, 80%, 100% { opacity: .15; }
+    40% { opacity: 1; }
+}
+
+/* Markdown in assistant messages */
+.msg.md { font-size: .96rem; line-height: 1.65; white-space: normal; }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md h1, .md h2, .md h3, .md h4 { margin: 1.4em 0 .5em; line-height: 1.3; color: #344b68; }
+.md h1 { font-size: 1.35rem; }
+.md h2 { display: block; font-size: 1.15rem; font-weight: 650; letter-spacing: 0; text-transform: none; }
+.md h3 { font-size: 1rem; }
+.md p, .md ul, .md ol, .md blockquote, .md pre, .md table { margin: .75em 0; }
+.md ul, .md ol { padding-left: 1.5rem; }
+.md li + li { margin-top: .25em; }
+.md a { color: #456b9d; overflow-wrap: anywhere; }
+.md code {
+    padding: .1em .35em;
+    background: #f0f4fa;
+    font-family: ui-monospace, monospace;
+    font-size: .85em;
+}
+.md pre { padding: .75rem 1rem; background: #f0f4fa; border-radius: 8px; overflow-x: auto; }
+.md pre code { padding: 0; background: none; }
+.md blockquote { padding-left: 1rem; border-left: 3px solid var(--gold); color: #596170; }
+.md table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: .85rem; }
+.md th, .md td { padding: .4rem .75rem; border: 1px solid #d7ccaa; text-align: left; vertical-align: top; }
+.md th { background: #f2f6fb; }
+.md hr { margin: 1.25em 0; border: none; border-top: 1px solid #d8ca9f; }
+
+/* Message composer and examples */
+#task {
+    flex: none;
+    padding: 1rem 1.5rem 1.3rem;
+    background: transparent;
+    border-top: 2px solid rgba(183,155,86,.55);
+}
+#question {
+    width: 100%;
+    padding: .78rem 1rem;
+    border: 1.5px solid #c5b483;
+    border-radius: 14px;
+    background: rgba(255,255,255,.9);
+    color: var(--ink);
+    font-size: 1rem;
+    outline: none;
+}
+#question:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(183,155,86,.13); }
+#examples { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; margin-top: .75rem; }
+.example {
+    padding: 0;
+    background: transparent;
+    color: #60748d;
+    border: none;
+    font-size: .8rem;
+    letter-spacing: 0;
+    text-transform: none;
+    text-align: left;
+}
+.example:hover { color: #405b80; text-decoration: underline; }
+#run, #new-session { margin-top: 1rem; }
+#run { background: var(--blue); border: 2px solid var(--blue); }
+#run:hover:not(:disabled) { background: var(--blue-dark); }
+#new-session {
+    margin-left: .5rem;
+    background: rgba(255,255,255,.7);
+    border: 2px solid var(--gold-soft);
+    color: #526987;
+}
+
+/* Existing detailed Activity Panel remains mounted behind the tabs */
+body[data-tab] { margin-right: 0; }
+/* Hide the chat layout when Activity Panel is selected */
+body[data-tab="activity"] #view-chat {
+    display: none;
+}
+
+/* Show the chat layout when Chat is selected */
+body[data-tab="chat"] #view-chat {
+    display: grid;
+}
+body[data-tab] #context-panel {
+    position: fixed;
+    z-index: 5;
+    top: calc(var(--tabbar-h) + .4rem);
+    right: var(--page-pad);
+    bottom: .9rem;
+    left: var(--page-pad);
+    width: auto;
+    height: auto;
+    overflow: auto;
+    background: var(--panel-bg) !important;
+    border: 1.5px solid var(--gold) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 9px 28px rgba(65,91,128,.07);
+}
+body[data-tab="chat"] #context-panel { visibility: hidden; pointer-events: none; }
+#context-panel:empty::before {
+    content: "Detailed agent activity appears here once research starts.";
+    font-size: .85rem;
+    color: var(--muted);
+}
+
+@media (max-width: 800px) {
+    #view-chat {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: .7rem;
+        padding: .4rem var(--page-pad) .6rem;
+    }
+    #sidebar { max-height: 23vh; border-radius: 20px; }
+    #conversation { border-radius: 20px; }
+    :root { --tabbar-h: 7.4rem; --content-w: 94%; }
+    #arch-stars { top: 2.8rem; }
+    #tabs { padding-bottom: .6rem; }
+    .tab { padding: .4rem .8rem; }
+    #messages { padding: 3rem 1rem 1rem; }
+    #task { padding: .75rem; }
+    .msg.user { max-width: 90%; }
+    .msg.assistant:not(.thinking) { max-width: 96%; padding: 1rem; }
+    body[data-tab] #context-panel { bottom: .6rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .tab { transition: none; }
+    .dots span { animation: none; }
+}
+
+
+#conversation-wrapper {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+}
+
+#conversation {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border: none;
+    border-radius: 14px;
+    background: var(--panel-bg); /* clipped to the rounded shape; sparkles live outside, in the wrapper */
+}
+
+/* Border with gaps near the stars */
+#conversation-wrapper::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1.5px solid var(--gold);
+    border-radius: 14px;
+    pointer-events: none;
+    z-index: 2;
+
+    -webkit-mask:
+        radial-gradient(circle 23px at 53px 0, transparent 98%, black 100%),
+        radial-gradient(circle 23px at calc(100% - 53px) 100%, transparent 98%, black 100%);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+}
+
+.chat-sparkle {
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.chat-sparkle.top-left {
+    top: -12px;
+    left: 35px;
+}
+
+.chat-sparkle.bottom-right {
+    right: 35px;
+    bottom: -18px;
+}
+
+/* Welcome modal (native <dialog>) */
+.welcome-modal {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(620px, calc(100vw - 2rem));
+    max-height: calc(100dvh - 2rem);
+    padding: 0;
+    overflow: hidden;
+    color: var(--ink);
+    background: #fdfdff;
+    border: 1px solid rgba(80, 107, 147, .14);
+    border-radius: 22px;
+    box-shadow: 0 24px 64px rgba(53, 59, 70, .22), 0 2px 8px rgba(53, 59, 70, .08);
+}
+.welcome-modal[open] { display: flex; flex-direction: column; }
+.welcome-modal::backdrop { background: rgba(53, 59, 70, .28); }
+.welcome-scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 2.5rem 2.5rem 1.5rem;
+}
+.welcome-close {
+    position: absolute;
+    top: .9rem;
+    right: .9rem;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #4a505c;
+}
+.welcome-close:hover { background: rgba(53, 59, 70, .08); }
+.welcome-close svg { width: 18px; height: 18px; }
+.welcome-title {
+    position: relative;
+    display: inline-block;
+    font-size: clamp(1.6rem, 5vw, 2.1rem);
+    font-weight: 650;
+    line-height: 1.15;
+    letter-spacing: -.01em;
+    padding-right: 3rem;
+}
+.welcome-stars { position: absolute; top: -.35rem; right: 0; fill: #4a505c; }
+.welcome-stars svg { position: absolute; }
+.welcome-subtitle { margin: .6rem 0 1.5rem; color: var(--blue-dark); font-size: 1.05rem; line-height: 1.4; }
+.welcome-modal p { margin-bottom: 1rem; font-size: .95rem; line-height: 1.65; }
+.welcome-modal h3 { margin: 1.5rem 0 .4rem; font-size: 1.05rem; color: var(--blue-dark); }
+.welcome-modal .welcome-disclaimer { margin: 1.5rem 0 0; font-size: .78rem; line-height: 1.5; color: var(--muted); }
+.welcome-footer { flex: none; padding: 1rem 2.5rem 1.75rem; background: #fdfdff; }
+.welcome-start {
+    width: 100%;
+    padding: .95rem 1.5rem;
+    border-radius: 14px;
+    font-size: .85rem;
+    font-weight: 600;
+    background: var(--blue);
+}
+.welcome-start:hover { background: var(--blue-dark); }
+body.modal-open { overflow: hidden; }
+@media (max-width: 600px) {
+    .welcome-scroll { padding: 2rem 1.4rem 1rem; }
+    .welcome-footer { padding: .9rem 1.4rem 1.25rem; }
+}
 
         </style>
     </head>
     <body data-tab="chat">
         <div id="app">
             <nav id="tabs" role="tablist">
+                <svg id="arch" aria-hidden="true" viewBox="0 0 1000 100" preserveAspectRatio="none">
+                    <defs>
+                        <radialGradient id="arch-fade" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="1" gradientTransform="translate(500 20) scale(750 85)">
+                            <stop offset="0" stop-color="#fff" stop-opacity=".98" />
+                            <stop offset=".45" stop-color="#fff" stop-opacity=".6" />
+                            <stop offset="1" stop-color="#fff" stop-opacity="0" />
+                        </radialGradient>
+                    </defs>
+                    <path d="M0 100 Q500 -50 1000 100 Z" fill="url(#arch-fade)" />
+                    <path class="arch-line" d="M0 100 Q500 -50 1000 100" stroke-width="2" />
+                    <path class="arch-line" d="M0 100 Q500 -80 1000 100" stroke-width="1" stroke-opacity=".7" />
+                </svg>
+                <div id="arch-stars" aria-hidden="true"><svg width="11.2" height="11.2" viewBox="0 0 24 24"><path d="M12 0C12.9 7.2 16.8 11.1 24 12 16.8 12.9 12.9 16.8 12 24 11.1 16.8 7.2 12.9 0 12 7.2 11.1 11.1 7.2 12 0Z"/></svg><svg width="19.8" height="19.8" viewBox="0 0 24 24"><path d="M12 0C12.9 7.2 16.8 11.1 24 12 16.8 12.9 12.9 16.8 12 24 11.1 16.8 7.2 12.9 0 12 7.2 11.1 11.1 7.2 12 0Z"/></svg><svg width="11.2" height="11.2" viewBox="0 0 24 24"><path d="M12 0C12.9 7.2 16.8 11.1 24 12 16.8 12.9 12.9 16.8 12 24 11.1 16.8 7.2 12.9 0 12 7.2 11.1 11.1 7.2 12 0Z"/></svg></div>
                 <button id="tab-chat" class="tab" type="button" role="tab" aria-selected="true">Chat</button>
                 <button id="tab-activity" class="tab" type="button" role="tab" aria-selected="false">Activity Panel</button>
             </nav>
@@ -516,8 +495,25 @@
                     <h2>Activity <span id="status"></span></h2>
                     <ol id="activity"><li class="empty">Each agent's steps appear here.</li></ol>
                 </aside>
+                
+                <div id="conversation-wrapper">
+                    <div id="conversation">
+                        <div id="messages">
+                            <p id="intro" class="empty">Skincare deep research: a lead splits your question, specialists search product, ingredient and clinical sources in parallel, and a writer turns their findings into a cited report.</p>
+                        </div>
 
-                <div id="conversation">
+                        <form id="task">
+                            <input id="question" placeholder="Ask about a product, an ingredient, or a skin concern" autocomplete="off" />
+                            <div id="examples">
+                                <button type="button" class="example">What's in Clinique Moisture Surge 100H? I don't really understand skincare ingredients. Can you explain what they do?</button>
+                                <button type="button" class="example">Olay Retinol24 says its retinol and vitamin B3 can help reduce wrinkles and dark spots. Does that stuff actually work, or is it just marketing?</button>
+                                <button type="button" class="example">I've heard retinol can irritate your skin. Is Olay Retinol24 actually safe to use? Could any of its ingredients cause problems?</button>
+                                <button type="button" class="example">Is there a product called "Clinique Moisture Surge Blueberry Moonlight Edition"? I saw some influencers talking about it, but I can't find it anywhere.</button>
+                            </div>
+                            <button id="run" type="submit">Run</button>
+                            <button id="new-session" type="button">New conversation</button>
+                        </form>
+                    </div>
                     <!-- Decorative outlined four-point sparkles -->
                     <svg class="chat-sparkle top-left" viewBox="0 0 90 90" fill="none" aria-hidden="true">
                         <path d="M31 4 Q36 29 59 36 Q36 42 31 69 Q26 43 4 36 Q27 29 31 4Z" stroke="#B79B56" stroke-width="2.3" stroke-linejoin="round" />
@@ -527,24 +523,50 @@
                         <path d="M47 6 Q53 31 81 39 Q53 46 47 75 Q41 47 12 39 Q41 31 47 6Z" stroke="#B79B56" stroke-width="2.3" stroke-linejoin="round" />
                         <path d="M13 55 Q16 65 25 68 Q16 71 13 83 Q10 71 1 68 Q10 65 13 55Z" stroke="#B79B56" stroke-width="1.8" stroke-linejoin="round" />
                     </svg>
-                    <div id="messages">
-                        <p id="intro" class="empty">Skincare deep research: a lead splits your question, specialists search product, ingredient and clinical sources in parallel, and a writer turns their findings into a cited report.</p>
-                    </div>
-
-                    <form id="task">
-                        <input id="question" value="Is niacinamide effective for acne, and what do safety reports say about products containing it?" placeholder="Ask about a product, an ingredient, or a skin concern" autocomplete="off" />
-                        <div id="examples">
-                            <button type="button" class="example">What's in Clinique Moisture Surge 100H? I don't really understand skincare ingredients. Can you explain what they do?</button>
-                            <button type="button" class="example">Wait, does this stuff actually work? Or is it just marketing?</button>
-                            <button type="button" class="example">Okay, but can this thing mess up my skin? Has anyone had bad reactions to it?</button>
-                            <button type="button" class="example">Hey, have you heard of Clinique Moisture Surge Blueberry Moonlight Edition? What's in it? Is it any good?</button>
-                        </div>
-                        <button id="run" type="submit">Run</button>
-                        <button id="new-session" type="button">New conversation</button>
-                    </form>
                 </div>
             </div>
         </div>
+
+        <dialog id="welcome-modal" class="welcome-modal" aria-labelledby="welcome-title" aria-describedby="welcome-subtitle">
+            <button type="button" class="welcome-close" id="welcome-close" aria-label="Close welcome message">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
+            </button>
+            <div class="welcome-scroll">
+                <h2 class="welcome-title" id="welcome-title">Skincare, Beyond the Hype.
+                    <span class="welcome-stars" aria-hidden="true">
+                        <svg style="top:0;right:0" width="14" height="14" viewBox="0 0 24 24"><path d="M12 0C12.9 7.2 16.8 11.1 24 12 16.8 12.9 12.9 16.8 12 24 11.1 16.8 7.2 12.9 0 12 7.2 11.1 11.1 7.2 12 0Z"/></svg>
+                        <svg style="top:14px;right:20px" width="9" height="9" viewBox="0 0 24 24"><path d="M12 0C12.9 7.2 16.8 11.1 24 12 16.8 12.9 12.9 16.8 12 24 11.1 16.8 7.2 12.9 0 12 7.2 11.1 11.1 7.2 12 0Z"/></svg>
+                        <svg style="top:-8px;right:24px" width="11" height="11" viewBox="0 0 24 24"><path d="M12 0C12.9 7.2 16.8 11.1 24 12 16.8 12.9 12.9 16.8 12 24 11.1 16.8 7.2 12.9 0 12 7.2 11.1 11.1 7.2 12 0Z"/></svg>
+                    </span>
+                </h2>
+                <p class="welcome-subtitle" id="welcome-subtitle">Know what's in your skincare, and what the science actually says.</p>
+                <p>Skincare can be confusing. With so many products promising brighter, smoother, and healthier skin, how do we know which claims are actually supported by science?</p>
+                <p>Most of us care about our skin, but we don't have the time to research every ingredient like a scientist. Misleading claims can mean wasting money on products that don't work, or worse, using ingredients that may irritate or harm our skin.</p>
+                <p>That's why I built this AI research assistant. It helps you look up skincare products, explore their ingredients, and investigate what scientific research actually says about their effectiveness and potential risks.</p>
+                <h3>How does it work?</h3>
+                <p>The agent uses sources including Open Beauty Facts for product ingredient lists, PubChem for chemical information, PubMed and PubMed Central for scientific studies, and FDA cosmetic adverse event reports for reported safety concerns.</p>
+                <h3>Not sure where to start?</h3>
+                <p>Try asking whether an ingredient actually works, searching for a product by name, or checking if a moisturizer's advertised benefits are backed by research.</p>
+                <p class="welcome-disclaimer">Research findings are informational and may be incomplete. Ingredient-level evidence doesn't necessarily prove that a finished product works, and adverse event reports do not establish causation.</p>
+            </div>
+            <div class="welcome-footer">
+                <button type="button" class="welcome-start" id="welcome-start">Start Exploring</button>
+            </div>
+        </dialog>
+        <script>
+            (() => {
+                const dlg = document.getElementById("welcome-modal");
+                if (!dlg || typeof dlg.showModal !== "function") return;
+                const close = () => dlg.close();
+                document.getElementById("welcome-close").addEventListener("click", close);
+                document.getElementById("welcome-start").addEventListener("click", close);
+                dlg.addEventListener("close", () => document.body.classList.remove("modal-open"));
+                document.body.classList.add("modal-open");
+                dlg.showModal(); // native: inert background, focus trap, Escape, focus restore
+                dlg.querySelector(".welcome-scroll").scrollTop = 0;
+                document.getElementById("welcome-start").focus();
+            })();
+        </script>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>

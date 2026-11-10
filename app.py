@@ -20,8 +20,9 @@ from agents import (
 )
 from agents.extensions.models.litellm_model import LitellmModel
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
 from tools import ingredient_sources
 from tools import clinical_sources
@@ -49,6 +50,7 @@ MAX_SESSIONS = 200  # hard cap; the least recently used idle sessions go first
 SWEEP_INTERVAL = 5 * 60
 HISTORY_USER_CHARS = 1000
 HISTORY_ANSWER_CHARS = 1500
+TOOL_RESULT_CHARS = 20000  # per recorded tool result in POST /chat; truncation is marked explicitly
 NO_FINDINGS = "I could not obtain research findings. Please try a narrower question."
 
 
@@ -393,71 +395,210 @@ async def research(ctx: RunContextWrapper[Research], specialty: str, task: str) 
 lead = Agent(
     name="Lead",
     instructions="""\
-You coordinate a skincare deep-research team. The user supplies a question, not a
-required Wikipedia start URL. Plan 2-3 independent tasks according to their needs.
-Call research multiple times IN THE SAME MODEL TURN to run tasks in parallel, with
-specialty = ingredient, clinical or product. Do not force an irrelevant specialty.
-Read their evidence-based findings. If a material question is unresolved, send only
-focused follow-up tasks, respecting a total limit of six researchers. Do not invent
-findings or request unnecessary paid OpenAlex downloads. When sufficient, say DONE
-and nothing else. The Writer will prepare the answer.
+You are the Lead Research Coordinator of an evidence-based skincare
+deep-research agent. Your job is to understand the user's question,
+plan efficient research, coordinate specialist researchers, evaluate
+their evidence, and ensure the Writer receives reliable findings.
 
-Research efficiency rules:
+You do NOT write the final report. When research is complete,
+respond with exactly DONE.
 
-1. Avoid assigning duplicate tasks to researchers.
+QUESTION UNDERSTANDING AND CLARIFICATION:
 
-2. For product-specific ingredient analysis, prioritize
-   obtaining the actual product ingredient list.
+1. Before calling any tools, determine whether the user's question
+   contains enough information to identify the research target.
 
-3. Researchers may work in parallel on independent tasks,
-   but do not assume a product's exact formulation before
-   the Product Researcher verifies it.
+2. If the question is ambiguous and cannot be resolved from the
+   conversation history, ask ONE concise clarification question
+   directly to the user. Do NOT call research tools.
 
-4. After the initial research, compare the findings and
-   identify specific unanswered questions.
+   Examples:
+   - "Is this product good for my skin?"
+     -> "Which product are you referring to?"
+   - "Does this ingredient actually work?"
+     -> "Which ingredient would you like me to investigate?"
+   - "Is this safe?"
+     -> Ask what product or ingredient the user means.
 
-5. Only launch follow-up researchers when a concrete
-   evidence gap remains. Give each follow-up researcher
-   the relevant findings already collected and specify
-   exactly what still needs to be investigated.
+3. Use conversation history to resolve references such as "it",
+   "this product", or "that ingredient" ONLY when the referent
+   is unambiguous.
 
-6. Do not repeat searches for ingredients that have
-   already been adequately researched.
+4. Do not demand unnecessary personal information. If the user
+   asks about a known product's general effectiveness or risks,
+   research it without requiring their skin type.
 
-7. If the exact product cannot be verified, do not assign tasks on
-   hypothetical ingredients or substitute products; let the missing
-   evidence be reported.
+5. If a question is answerable despite some missing details,
+   proceed with the available information and acknowledge
+   relevant limitations.
 
+RESEARCH PLANNING:
 
-RESEARCH SCOPE:
+1. Identify the user's main research objective before assigning
+   tasks: product identification, ingredients, clinical efficacy,
+   marketing claims, or safety.
 
-1. Match research depth to the user's question.
-   For basic product identification, ingredient lists, or
-   general ingredient explanations, prioritize Product and
-   Ingredient Researchers. Clinical research is optional.
+2. Plan approximately 2-3 independent research tasks when useful.
+   Call research multiple times IN THE SAME MODEL TURN so
+   independent Researchers execute in parallel.
 
-2. Use the Clinical Researcher when the question involves
-   effectiveness, clinical evidence, medical claims, or
-   safety concerns that require scientific literature.
+3. Assign each task to the most relevant specialty:
+   - product: product identity, formulations, ingredient lists,
+     and cosmetic adverse event reports.
+   - ingredient: chemical identity, properties, and general
+     ingredient functions.
+   - clinical: human studies, clinical efficacy, scientific
+     evidence, and relevant safety literature.
 
-3. Do not launch additional researchers or literature
-   searches unless they are necessary to answer the
-   user's actual question.
+4. Do not force every specialty into every question. Use only
+   the Researchers needed to answer the user's actual question.
 
+5. For basic ingredient explanations, prioritize product and
+   ingredient research. Clinical research is optional unless
+   the user requests scientific evidence or effectiveness.
 
-Conversation history rules:
+6. For effectiveness or marketing claims, prioritize clinical
+   evidence and distinguish ingredient-level findings from
+   evidence about the finished commercial product.
 
-1. The question may be preceded by earlier turns of this conversation. Use them
-   only to understand what a follow-up refers to ("it", "that product").
+7. For safety questions, investigate both the relevant ingredients
+   and available product-specific adverse event reports when
+   appropriate.
 
-2. Earlier assistant answers are unverified. They are not evidence and must
-   not be treated as findings.
+PARALLEL RESEARCH AND TASK DESIGN:
 
-3. Researchers cannot see the history. Write every research task so it stands
-   alone, naming the exact products and ingredients involved.
+1. Give each Researcher a specific, non-overlapping objective.
 
+2. Researchers operate in fresh contexts and cannot access the
+   conversation history. Every task must explicitly identify
+   the relevant product, ingredient, or research question.
+
+3. Parallelize independent investigations, but respect
+   dependencies. Do not assume an exact product formulation
+   before the Product Researcher verifies it.
+
+4. When the ingredient list is not yet known, Ingredient or
+   Clinical Researchers may investigate independently known
+   ingredients or general mechanisms, but must not assume
+   that those ingredients appear in the exact product.
+
+5. Avoid redundant searches or repeated API calls that do
+   not meaningfully improve the evidence.
+
+6. Do not request unnecessary paid OpenAlex full-text downloads.
+
+EVIDENCE QUALITY CONTROL:
+
+1. Carefully review each Researcher's findings before deciding
+   whether additional research is necessary.
+
+2. Every substantive finding intended for the Writer must have
+   a corresponding verifiable source from the current research.
+
+3. Prefer specific sources:
+   - Exact product records for ingredient lists.
+   - PubChem compound records for chemical properties.
+   - Specific PMID, DOI, or publication URLs for clinical claims.
+   - Specific report identifiers for FDA adverse events.
+
+4. A source must directly support the claim it accompanies.
+   A real citation is not sufficient if the cited source is
+   unrelated or only partially relevant.
+
+5. Check whether the evidence actually concerns:
+   - The correct product and formulation.
+   - The correct ingredient or chemical derivative.
+   - Human clinical research versus laboratory findings.
+   - Individual ingredients versus multi-ingredient products.
+   - Observed outcomes versus proposed mechanisms.
+
+6. Never treat a review article as a clinical trial or attribute
+   multi-ingredient formulation results to one ingredient
+   unless the study supports that attribution.
+
+7. If a Researcher reports an important conclusion without
+   an adequate source, request a focused verification task
+   when the missing evidence is material.
+
+8. If evidence remains unavailable, preserve that limitation.
+   Never invent a citation or treat an unsupported claim
+   as established fact.
+
+9. If multiple sources contradict each other, investigate
+   the discrepancy when necessary. Otherwise, communicate
+   the uncertainty instead of choosing a conclusion arbitrarily.
+
+10. Previous assistant responses are NOT evidence. Only
+    current, source-backed researcher findings may support
+    the Writer's factual claims.
+
+PRODUCT AND SAFETY VERIFICATION:
+
+1. Verify the exact product before making product-specific
+   ingredient, efficacy, or safety claims.
+
+2. Do not confuse similarly named products, regional
+   formulations, reformulations, or different editions.
+
+3. If the exact product cannot be verified, do not substitute
+   another product or investigate hypothetical ingredients
+   as though they belong to the requested product.
+
+4. Ingredient-level clinical evidence does not prove that
+   the finished commercial product is effective.
+
+5. FDA adverse event reports do not establish causality
+   or adverse reaction incidence rates.
+
+6. Do not claim that no studies or adverse event reports
+   exist simply because searches returned no results.
+   State which available sources were searched.
+
+FOLLOW-UP RESEARCH AND STOPPING CRITERIA:
+
+1. After the initial research wave, compare the findings
+   against the user's original question.
+
+2. Identify specific evidence gaps, contradictions, or
+   unsupported conclusions that materially affect the answer.
+
+3. Assign focused follow-up tasks ONLY when resolving those
+   gaps could meaningfully improve the final report.
+
+4. Give follow-up Researchers the relevant verified findings
+   already collected and clearly specify the remaining question.
+
+5. Respect the maximum total of SIX Researchers.
+   Never exceed this limit.
+
+6. Stop researching when:
+   - The main question has been adequately addressed.
+   - Material claims have appropriate supporting sources.
+   - Remaining uncertainties can be clearly explained.
+   - Further searches are unlikely to add useful information.
+   - The research limit has been reached.
+
+7. Do not keep researching merely to produce a longer report.
+   An accurate statement of insufficient evidence is a
+   valid research outcome.
+
+FINAL HANDOFF:
+
+1. Ensure that the collected findings clearly distinguish
+   supported conclusions, limitations, and unresolved questions.
+
+2. Do not invent or strengthen unsupported claims when
+   summarizing the research.
+
+3. When sufficient research has been completed, output
+   exactly DONE and nothing else.
+
+4. If clarification is required, ask the user directly
+   instead of outputting DONE or launching research.
 """,
-    model=MODEL, model_settings=SETTINGS, tools=[research],
+    model=MODEL,
+    model_settings=SETTINGS,
+    tools=[research],
 )
 
 
@@ -596,9 +737,14 @@ async def deep_research(
     prompt = f"{history}Current question: {question}"
     if start_url:
         prompt += f"\nOptional user-provided reference URL: {start_url}"
-    await Runner.run(lead, prompt, context=research_run, hooks=hooks, max_turns=12)
+    lead_result = await Runner.run(lead, prompt, context=research_run, hooks=hooks, max_turns=12)
     findings = "\n\n---\n\n".join(research_run.findings)
     if not findings:
+        # No research ran and the Lead said something other than DONE: that is its
+        # clarification question for the user. Return it as the answer; no Writer.
+        reply = str(lead_result.final_output or "").strip()
+        if research_run.researchers == 0 and reply and reply.upper().rstrip(".") != "DONE":
+            return reply
         return NO_FINDINGS
     report = await Runner.run(
         writer,
@@ -606,6 +752,70 @@ async def deep_research(
         hooks=hooks,
     )
     return str(report.final_output)
+
+
+# --- POST /chat: Project 1 response shape, plus an "agent" field on every tool call ---
+
+class ToolLogHooks(PanelHooks):
+    """PanelHooks that also keeps this run's tool calls (agent, name, args, result).
+
+    One instance per /chat request, shared by the Lead and every Researcher through
+    Runner.run(hooks=...), so the list is isolated per request. Records come from the
+    SDK's on_tool_start/on_tool_end, i.e. only tools that actually executed."""
+
+    def __init__(self, contexts, emit=lambda event: None):
+        super().__init__(contexts, emit)
+        self.tool_calls: list[dict] = []
+        self._open: dict[int, dict] = {}  # id(ToolContext) -> its record, while running
+
+    async def on_tool_start(self, context, agent, tool):
+        await super().on_tool_start(context, agent, tool)
+        raw = getattr(context, "tool_arguments", "")
+        try:
+            args = json.loads(raw) if raw else {}
+        except ValueError:
+            args = {"raw_arguments": raw}
+        record = {
+            "agent": agent.name, "name": tool.name,
+            "args": args if isinstance(args, dict) else {"value": args},
+            "result": None,
+        }
+        self.tool_calls.append(record)  # appended at start: order = order tools began
+        self._open[id(context)] = record
+
+    async def on_tool_end(self, context, agent, tool, result):
+        record = self._open.pop(id(context), None)
+        if record is not None:
+            text = result if isinstance(result, str) else to_json({"result": result})
+            if len(text) > TOOL_RESULT_CHARS:
+                text = (text[:TOOL_RESULT_CHARS]
+                        + f"... [truncated: first {TOOL_RESULT_CHARS} of {len(text)} characters]")
+            record["result"] = text
+
+    def finished_calls(self) -> list[dict]:
+        """Records for the response; a tool that started but never returned says so."""
+        for record in self.tool_calls:
+            if record["result"] is None:
+                record["result"] = "[tool did not return a result (run ended or was cancelled)]"
+        return self.tool_calls
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, pattern=r"\S")
+    session_id: str | None = None
+
+
+class ToolCallRecord(BaseModel):
+    agent: str
+    name: str
+    args: dict
+    result: str
+
+
+class ChatResponse(BaseModel):
+    response: str
+    session_id: str
+    tool_calls: list[ToolCallRecord]
 
 
 # --- FastAPI + course context panel + original SSE event format ---
@@ -745,6 +955,30 @@ async def run(request: Request, question: str, url: str = "", session_id: str = 
     response = StreamingResponse(events(), media_type="text/event-stream")
     set_session_cookie(response, conversation.id)
     return response
+
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(body: ChatRequest):
+    """Blocking JSON API: runs the same Lead/Researchers/Writer workflow as /run and waits.
+
+    Memory is keyed by body.session_id only (no cookie); omit it to start a new session."""
+    prune_conversations()
+    conversation = get_conversation(body.session_id or "", "")
+    conversation.last_active = time.monotonic()
+    conversation.active_runs += 1
+    history = format_history(conversation)  # completed exchanges only
+    hooks = ToolLogHooks(AgentContexts())  # throwaway panel data: not stored in run_contexts
+    try:
+        report = await deep_research(body.message, hooks, history=history)
+    except Exception as e:
+        raise HTTPException(500, f"{type(e).__name__}: {str(e)[:500]}")
+    finally:
+        conversation.active_runs -= 1
+        conversation.last_active = time.monotonic()
+    if report != NO_FINDINGS:  # same rule as /run; clarifications are kept as history
+        conversation.exchanges.append((body.message, report))
+    return ChatResponse(response=report, session_id=conversation.id,
+                        tool_calls=hooks.finished_calls())
 
 
 if __name__ == "__main__":
