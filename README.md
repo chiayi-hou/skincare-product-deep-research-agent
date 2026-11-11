@@ -1,6 +1,7 @@
 # Skincare, Beyond the Hype
 
 An evidence-based skincare exploration agent built for IEOR 4570 Project 2 (Deep Research path).
+
 Deploy url: [https://student-planning-agent-git-828235103430.europe-west1.run.app](https://skincare-product-deep-research-agent-git-828235103430.europe-west1.run.app/)
 
 ## Project overview
