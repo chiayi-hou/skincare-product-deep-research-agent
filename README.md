@@ -29,7 +29,7 @@ The agent queries external sources at runtime through Python tool wrappers in `t
 | Wikipedia | General ingredient background and terminology | `tools/ingredient_sources.py`: `wiki_search`, `wiki_read` |
 | PubMed | Biomedical literature search, abstracts, publication types, PMID and DOI | `tools/clinical_sources.py`: `pubmed_search`, `pubmed_papers` |
 | PubMed Central (PMC) | Relevant available full-text excerpts | `tools/clinical_sources.py`: `pmc_fulltext` |
-| OpenAlex | Backup paper metadata and, where available and justified, full text | `tools/clinical_sources.py`: `openalex_search`, `openalex_xml_availability`, `openalex_xml_read` |
+| OpenAlex | A fallback academic literature source used only when PubMed and available PMC evidence are insufficient. Full-text XML retrieval is treated as a last resort and is attempted only when necessary, available, and justified. | `tools/clinical_sources.py`: `openalex_search`, `openalex_xml_availability`, `openalex_xml_read` |
 | openFDA cosmetic adverse events | Reported adverse-event records and product-name matches | `tools/product_sources.py`: `fda_reports` |
 
 Open Beauty Facts is crowdsourced and can be incomplete or outdated. Clinical studies may test different formulations or outcomes from the user's product. FDA adverse-event reports are not proof of causation or measures of incidence. Missing search results do not prove that no product, paper, or report exists.
